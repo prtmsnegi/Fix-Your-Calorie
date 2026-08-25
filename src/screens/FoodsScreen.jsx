@@ -1,12 +1,14 @@
 import { useMemo, useState } from 'react'
-import { Search, Plus, UtensilsCrossed } from 'lucide-react'
+import { Search, Plus, UtensilsCrossed, Download } from 'lucide-react'
 import { useFoods } from '../context/FoodsContext'
 import { useCategories } from '../context/CategoriesContext'
 import { CategoryChip } from '../components/CategoryChip'
 import { AddCategoryInline } from '../components/AddCategoryInline'
 import { FoodListItem } from '../components/FoodListItem'
 import { EmptyState } from '../components/EmptyState'
+import { Toast } from '../components/Toast'
 import { AddEditFoodModal } from './AddEditFoodModal'
+import { importDefaultFoods, DEFAULT_FOODS_IMPORTED_KEY } from '../utils/importDefaultFoods'
 
 export function FoodsScreen() {
   const { foods, addFood, updateFood, deleteFood } = useFoods()
@@ -15,6 +17,17 @@ export function FoodsScreen() {
   const [category, setCategory] = useState('All')
   const [modalState, setModalState] = useState(null) // null | 'new' | food object
   const [addingCategory, setAddingCategory] = useState(false)
+  const [toastMessage, setToastMessage] = useState('')
+
+  const handleImportDefaults = () => {
+    const { addedCount, totalCount } = importDefaultFoods({ existingFoods: foods, addFood, addCategory })
+    localStorage.setItem(DEFAULT_FOODS_IMPORTED_KEY, 'true')
+    setToastMessage(
+      addedCount > 0
+        ? `Imported ${addedCount} new Indian food${addedCount === 1 ? '' : 's'}`
+        : `All ${totalCount} reference foods are already in your database`,
+    )
+  }
 
   const filtered = useMemo(() => {
     return foods.filter((f) => {
@@ -48,7 +61,15 @@ export function FoodsScreen() {
 
   return (
     <div className="px-4 pt-4 pb-24">
-      <h1 className="text-xl font-bold text-gray-900 dark:text-gray-50 mb-3">My Foods Database</h1>
+      <div className="flex items-center justify-between mb-3">
+        <h1 className="text-xl font-bold text-gray-900 dark:text-gray-50">My Foods Database</h1>
+        <button
+          onClick={handleImportDefaults}
+          className="flex items-center gap-1 text-xs font-medium text-emerald-600 dark:text-emerald-400"
+        >
+          <Download size={14} /> Import Default Foods
+        </button>
+      </div>
 
       <div className="relative mb-3">
         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -120,6 +141,8 @@ export function FoodsScreen() {
           onClose={() => setModalState(null)}
         />
       )}
+
+      <Toast message={toastMessage} onDismiss={() => setToastMessage('')} />
     </div>
   )
 }
