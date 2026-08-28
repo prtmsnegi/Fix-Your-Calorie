@@ -1,7 +1,7 @@
 import { createContext, useContext, useMemo } from 'react'
 import { useLocalStorage } from '../hooks/useLocalStorage'
 import { computeMealNutrition } from '../utils/nutrition'
-import { formatTime } from '../utils/dateUtils'
+import { formatTime, todayStr, daysBetween } from '../utils/dateUtils'
 
 const DailyLogsContext = createContext(null)
 
@@ -68,7 +68,13 @@ export function DailyLogsProvider({ children }) {
       updateDay(dateStr, (log) => ({ ...log, meals: [] }))
     }
 
-    return { dailyLogs, getLogForDate, addMeal, updateMeal, deleteMeal, setWeight, clearDay }
+    const isDateWithin7Days = (dateStr) => {
+      const today = todayStr()
+      const daysDiff = daysBetween(dateStr, today)
+      return daysDiff >= 0 && daysDiff <= 7
+    }
+
+    return { dailyLogs, getLogForDate, addMeal, updateMeal, deleteMeal, setWeight, clearDay, isDateWithin7Days }
   }, [dailyLogs, setDailyLogs])
 
   return <DailyLogsContext.Provider value={value}>{children}</DailyLogsContext.Provider>

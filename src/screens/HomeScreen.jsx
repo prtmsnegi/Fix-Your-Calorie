@@ -4,7 +4,7 @@ import { useFoods } from '../context/FoodsContext'
 import { useDailyLogs } from '../context/DailyLogsContext'
 import { useProfile } from '../context/ProfileContext'
 import { computeDailyTotals, computeMacroPercents } from '../utils/nutrition'
-import { todayStr, formatDisplayDate } from '../utils/dateUtils'
+import { todayStr, formatDisplayDate, get7DaysAgoStr } from '../utils/dateUtils'
 import { MEAL_TYPES, MEAL_TYPE_LABELS } from '../constants/mealTypes'
 import { ProgressBar } from '../components/ProgressBar'
 import { MacroRow } from '../components/MacroRow'
@@ -15,14 +15,17 @@ import { AddMealModal } from './AddMealModal'
 
 export function HomeScreen() {
   const { foods } = useFoods()
-  const { getLogForDate, deleteMeal, clearDay } = useDailyLogs()
+  const { getLogForDate, deleteMeal, clearDay, isDateWithin7Days } = useDailyLogs()
   const { profile } = useProfile()
 
-  const dateStr = todayStr()
-  const log = getLogForDate(dateStr)
+  const [selectedDate, setSelectedDate] = useState(todayStr())
+  const log = getLogForDate(selectedDate)
 
-  const [addMealFor, setAddMealFor] = useState(null) // null | mealType string
+  const [addMealFor, setAddMealFor] = useState(null)
   const [editingMeal, setEditingMeal] = useState(null)
+
+  const isToday = selectedDate === todayStr()
+  const isDateValid = isDateWithin7Days(selectedDate)
 
   const totals = useMemo(() => computeDailyTotals(log.meals, foods), [log.meals, foods])
   const macroPct = useMemo(() => computeMacroPercents(totals), [totals])
@@ -52,19 +55,52 @@ export function HomeScreen() {
     }, {})
   }, [mealsByType, foods])
 
+  const handleDateChange = (e) => {
+    const newDate = e.target.value
+    if (isDateWithin7Days(newDate)) {
+      setSelectedDate(newDate)
+    }
+  }
+
   const handleDeleteMeal = (meal) => {
-    if (confirm('Delete this meal from today’s log?')) deleteMeal(dateStr, meal.id)
+    const dateLabel = isToday ? "today's" : `${formatDisplayDate(selectedDate)}'s`
+    if (confirm(`Delete this meal from ${dateLabel} log?`)) {
+      deleteMeal(selectedDate, meal.id)
+    }
   }
 
   const handleClearDay = () => {
     if (log.meals.length === 0) return
-    if (confirm('Clear all meals logged today? This cannot be undone.')) clearDay(dateStr)
+    const dateLabel = isToday ? 'today' : formatDisplayDate(selectedDate)
+    if (confirm(`Clear all meals logged on ${dateLabel}? This cannot be undone.`)) {
+      clearDay(selectedDate)
+    }
   }
 
   return (
     <div className="px-4 pt-4 pb-24">
+      <div className="mb-4">
+        <input
+          type="date"
+          value={selectedDate}
+          onChange={handleDateChange}
+          min={get7DaysAgoStr()}
+          max={todayStr()}
+          className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-50 text-sm"
+          aria-label="Select date"
+        />
+        {!isDateValid && (
+          <p className="text-xs text-red-500 mt-1">You can only edit meals from the last 7 days</p>
+        )}
+      </div>
+
       <div className="flex items-center justify-between mb-3">
-        <h1 className="text-xl font-bold text-gray-900 dark:text-gray-50">{formatDisplayDate(dateStr)}</h1>
+        <div>
+          <h1 className="text-xl font-bold text-gray-900 dark:text-gray-50">{formatDisplayDate(selectedDate)}</h1>
+          {!isToday && (
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Editing past day</p>
+          )}
+        </div>
         <button
           onClick={handleClearDay}
           className="p-2 text-gray-400 hover:text-red-500"
@@ -140,7 +176,7 @@ export function HomeScreen() {
       ))}
 
       {log.meals.length === 0 && (
-        <EmptyState icon={Utensils} title="No meals logged today" subtitle="Tap + Add Meal to get started" />
+        <EmptyState icon={Utensils} title={isToday ? "No meals logged today" : "No meals logged"} subtitle="Tap + Add Meal to get started" />
       )}
 
       <button
@@ -151,11 +187,11 @@ export function HomeScreen() {
       </button>
 
       {addMealFor && (
-        <AddMealModal dateStr={dateStr} defaultMealType={addMealFor} onClose={() => setAddMealFor(null)} />
+        <AddMealModal dateStr={selectedDate} defaultMealType={addMealFor} onClose={() => setAddMealFor(null)} />
       )}
       {editingMeal && (
         <AddMealModal
-          dateStr={dateStr}
+          dateStr={selectedDate}
           editingMeal={editingMeal}
           onClose={() => setEditingMeal(null)}
         />
