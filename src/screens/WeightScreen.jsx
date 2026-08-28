@@ -4,7 +4,7 @@ import { useDailyLogs } from '../context/DailyLogsContext'
 import { useProfile } from '../context/ProfileContext'
 import { getRecentWeightEntries, getTrendDirection } from '../utils/weightTrend'
 import { calculateBMI, getBMICategory, BMI_CATEGORY_COLORS } from '../utils/bmi'
-import { todayStr, isMonWedFri } from '../utils/dateUtils'
+import { todayStr, isMonWedFri, get7DaysAgoStr } from '../utils/dateUtils'
 import { WeightEntryRow } from '../components/WeightEntryRow'
 import { StatCard } from '../components/StatCard'
 import { EmptyState } from '../components/EmptyState'
@@ -36,6 +36,18 @@ export function WeightScreen() {
     setInputWeight('')
   }
 
+  const openLogModal = () => {
+    setInputDate(todayStr())
+    setInputWeight('')
+    setShowLog(true)
+  }
+
+  const openEditModal = (entry) => {
+    setInputDate(entry.date)
+    setInputWeight(String(entry.weight_kg))
+    setShowLog(true)
+  }
+
   return (
     <div className="px-4 pt-4 pb-24">
       <h1 className="text-xl font-bold text-gray-900 dark:text-gray-50 mb-3">Weight Tracking</h1>
@@ -57,13 +69,14 @@ export function WeightScreen() {
               date={entry.date}
               weight_kg={entry.weight_kg}
               direction={getTrendDirection(recentEntries, i)}
+              onClick={() => openEditModal(entry)}
             />
           ))
         )}
       </div>
 
       <button
-        onClick={() => setShowLog(true)}
+        onClick={openLogModal}
         className="w-full mb-4 btn-primary flex items-center justify-center gap-2"
       >
         <Plus size={18} /> Log Weight
@@ -91,13 +104,14 @@ export function WeightScreen() {
       </div>
 
       {showLog && (
-        <Modal title="Log Weight" onClose={() => setShowLog(false)}>
+        <Modal title={inputDate === todayStr() ? 'Log Weight' : 'Edit Weight'} onClose={() => setShowLog(false)}>
           <form onSubmit={handleLog} className="space-y-3">
             <label className="block">
               <span className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Date</span>
               <input
                 type="date"
                 value={inputDate}
+                min={get7DaysAgoStr()}
                 max={todayStr()}
                 onChange={(e) => setInputDate(e.target.value)}
                 className="input"

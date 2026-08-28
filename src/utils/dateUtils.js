@@ -39,6 +39,10 @@ export function addDays(dateStr, days) {
   return toDateStr(date)
 }
 
+export function get7DaysAgoStr() {
+  return addDays(todayStr(), -7)
+}
+
 export function isMonWedFri(date = new Date()) {
   const day = date.getDay()
   return day === 1 || day === 3 || day === 5
