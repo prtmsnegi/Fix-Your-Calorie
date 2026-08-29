@@ -3,7 +3,7 @@ import { daysBetween } from './dateUtils'
 // entries: sorted ascending [{date, weight_kg}], logged days only.
 // Returns [{date, weight_kg, moving_avg}] with a trailing 7-calendar-day simple
 // moving average computed over whatever logged entries fall in that window.
-export function computeMovingAverage(entries, windowDays = 7) {
+export function computeMovingAverage(entries, windowDays = 7, field = 'weight_kg') {
   return entries.map((entry, i) => {
     const windowEntries = []
     for (let j = i; j >= 0; j--) {
@@ -13,7 +13,7 @@ export function computeMovingAverage(entries, windowDays = 7) {
         break
       }
     }
-    const avg = windowEntries.reduce((sum, e) => sum + e.weight_kg, 0) / windowEntries.length
+    const avg = windowEntries.reduce((sum, e) => sum + e[field], 0) / windowEntries.length
     return { ...entry, moving_avg: Number(avg.toFixed(2)) }
   })
 }

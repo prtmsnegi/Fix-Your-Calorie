@@ -1,3 +1,5 @@
+import { todayStr, addDays } from './dateUtils'
+
 export function computeMealNutrition(quantity, nutritionPerUnit) {
   const qty = Number(quantity) || 0
   return {
@@ -44,6 +46,21 @@ export function computeDailyTotals(meals, foods) {
     },
     { calories: 0, protein_g: 0, carbs_g: 0, fat_g: 0 },
   )
+}
+
+// Dense daily calorie series (one entry per calendar day, zero-filled for days
+// with no meals) for the trailing `days` days ending today. Unlike sparse weight
+// entries, calorie trends need every day present for a continuous line/average.
+export function getDailyCalorieSeries(dailyLogs, foods, days) {
+  const today = todayStr()
+  const series = []
+  for (let i = days - 1; i >= 0; i--) {
+    const date = addDays(today, -i)
+    const log = dailyLogs[date]
+    const calories = log ? computeDailyTotals(log.meals, foods).calories : 0
+    series.push({ date, calories })
+  }
+  return series
 }
 
 export function computeMacroPercents({ protein_g, carbs_g, fat_g }) {
