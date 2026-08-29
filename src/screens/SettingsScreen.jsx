@@ -1,14 +1,24 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useProfile } from '../context/ProfileContext'
 import { useDailyLogs } from '../context/DailyLogsContext'
+import { useFoods } from '../context/FoodsContext'
+import { useCategories } from '../context/CategoriesContext'
 import { getRecentWeightEntries } from '../utils/weightTrend'
 import { calculateBMR, calculateTDEE } from '../utils/tdee'
 import { ACTIVITY_LEVELS, getActivityFactor } from '../constants/activityLevels'
+import { createBackup, parseBackup, applyBackup } from '../utils/backup'
 import { InfoLabel } from '../components/InfoLabel'
+import { Toast } from '../components/Toast'
 
 export function SettingsScreen() {
   const { profile, updateProfile } = useProfile()
-  const { dailyLogs } = useDailyLogs()
+  const { dailyLogs, replaceDailyLogs } = useDailyLogs()
+  const { foods, replaceFoods } = useFoods()
+  const { customCategories, replaceCategories } = useCategories()
+
+  const fileInputRef = useRef(null)
+  const [toastMessage, setToastMessage] = useState('')
+  const [importError, setImportError] = useState('')
 
   const [form, setForm] = useState({
     height_cm: profile.height_cm ?? '',
@@ -63,6 +73,44 @@ export function SettingsScreen() {
     if (!previewTdee) return
     setForm((f) => ({ ...f, goal_calories: Math.round(previewTdee) }))
     setSaved(false)
+  }
+
+  const handleExport = () => {
+    const json = createBackup({ profile, foods, dailyLogs, customCategories })
+    const blob = new Blob([json], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `calorie-tracker-backup-${new Date().toISOString().slice(0, 10)}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+    setToastMessage('Backup downloaded')
+  }
+
+  const handleImportClick = () => {
+    setImportError('')
+    fileInputRef.current?.click()
+  }
+
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+
+    const reader = new FileReader()
+    reader.onload = () => {
+      try {
+        const data = parseBackup(reader.result)
+        if (!confirm('This will replace all current data (meals, weight, foods, settings) with the backup. Continue?')) return
+        applyBackup(data, { updateProfile, replaceFoods, replaceDailyLogs, replaceCategories })
+        setImportError('')
+        setToastMessage('Data imported successfully')
+      } catch (err) {
+        setImportError(err.message)
+      }
+    }
+    reader.onerror = () => setImportError('Could not read the selected file.')
+    reader.readAsText(file)
   }
 
   return (
@@ -163,6 +211,31 @@ export function SettingsScreen() {
           />
         </button>
       </section>
+
+      <section className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700 mt-4">
+        <h2 className="text-sm font-semibold text-gray-800 dark:text-gray-100">Backup & Restore</h2>
+        <p className="text-xs text-gray-400 mb-3">
+          All data lives only on this device. Export a backup to move it to a new phone or browser.
+        </p>
+        <div className="flex gap-2">
+          <button type="button" onClick={handleExport} className="btn-secondary flex-1">
+            Export Data
+          </button>
+          <button type="button" onClick={handleImportClick} className="btn-secondary flex-1">
+            Import Data
+          </button>
+        </div>
+        {importError && <p className="text-xs text-red-500 mt-2">{importError}</p>}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="application/json"
+          onChange={handleFileChange}
+          className="hidden"
+        />
+      </section>
+
+      <Toast message={toastMessage} onDismiss={() => setToastMessage('')} />
     </div>
   )
 }

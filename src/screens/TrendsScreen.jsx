@@ -68,10 +68,10 @@ export function TrendsScreen() {
           <EmptyState icon={TrendingUp} title="No weight data yet" subtitle="Log weight entries to see your trend" />
         ) : (
           <ResponsiveContainer width="100%" height={240}>
-            <LineChart data={chartData} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
+            <LineChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--color-gray-200, #e5e7eb)" />
               <XAxis dataKey="date" tickFormatter={formatShortDate} tick={{ fontSize: 10 }} />
-              <YAxis domain={['dataMin - 1', 'dataMax + 1']} width={32} tick={{ fontSize: 10 }} />
+              <YAxis domain={['dataMin - 1', 'dataMax + 1']} width={36} tick={{ fontSize: 10 }} />
               <Tooltip labelFormatter={formatShortDate} formatter={(v) => `${v} kg`} />
               <Line type="monotone" dataKey="weight_kg" stroke="#10b981" dot={{ r: 3 }} name="Weight" />
               <Line type="monotone" dataKey="moving_avg" stroke="#6366f1" dot={false} strokeDasharray="4 2" name="7-day avg" />
@@ -109,11 +109,11 @@ export function TrendsScreen() {
           <EmptyState icon={TrendingUp} title="No calorie data yet" subtitle="Log meals to see your trend" />
         ) : (
           <ResponsiveContainer width="100%" height={240}>
-            <LineChart data={calorieChartData} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
+            <LineChart data={calorieChartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--color-gray-200, #e5e7eb)" />
               <XAxis dataKey="date" tickFormatter={formatShortDate} tick={{ fontSize: 10 }} />
               <YAxis
-                width={36}
+                width={40}
                 tick={{ fontSize: 10 }}
                 domain={[0, (dataMax) => Math.ceil(Math.max(dataMax, profile.goal_calories || 2000) * 1.1)]}
               />

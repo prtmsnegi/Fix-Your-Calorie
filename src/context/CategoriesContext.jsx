@@ -21,7 +21,9 @@ export function CategoriesProvider({ children }) {
       return trimmed
     }
 
-    return { categories, defaultCategories: DEFAULT_CATEGORIES, customCategories, addCategory, isDefaultCategory }
+    const replaceCategories = (newCategories) => setCustomCategories(newCategories)
+
+    return { categories, defaultCategories: DEFAULT_CATEGORIES, customCategories, addCategory, isDefaultCategory, replaceCategories }
   }, [customCategories, setCustomCategories])
 
   return <CategoriesContext.Provider value={value}>{children}</CategoriesContext.Provider>

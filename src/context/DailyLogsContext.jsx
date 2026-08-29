@@ -74,7 +74,9 @@ export function DailyLogsProvider({ children }) {
       return daysDiff >= 0 && daysDiff <= 7
     }
 
-    return { dailyLogs, getLogForDate, addMeal, updateMeal, deleteMeal, setWeight, clearDay, isDateWithin7Days }
+    const replaceDailyLogs = (newLogs) => setDailyLogs(newLogs)
+
+    return { dailyLogs, getLogForDate, addMeal, updateMeal, deleteMeal, setWeight, clearDay, isDateWithin7Days, replaceDailyLogs }
   }, [dailyLogs, setDailyLogs])
 
   return <DailyLogsContext.Provider value={value}>{children}</DailyLogsContext.Provider>

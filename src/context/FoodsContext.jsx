@@ -34,7 +34,9 @@ export function FoodsProvider({ children }) {
       return foods.filter((f) => f.name.toLowerCase().includes(q))
     }
 
-    return { foods, addFood, updateFood, deleteFood, getFoodById, foodsByCategory, searchFoods }
+    const replaceFoods = (newFoods) => setFoods(newFoods)
+
+    return { foods, addFood, updateFood, deleteFood, getFoodById, foodsByCategory, searchFoods, replaceFoods }
   }, [foods, setFoods])
 
   return <FoodsContext.Provider value={value}>{children}</FoodsContext.Provider>
