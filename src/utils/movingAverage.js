@@ -1,4 +1,5 @@
-import { daysBetween } from './dateUtils'
+import { daysBetween, todayStr, addDays } from './dateUtils'
+import { computeDailyTotals } from './nutrition'
 
 // entries: sorted ascending [{date, weight_kg}], logged days only.
 // Returns [{date, weight_kg, moving_avg}] with a trailing 7-calendar-day simple
@@ -24,4 +25,22 @@ export function filterToTrailingDays(entries, days = 28) {
   if (entries.length === 0) return []
   const latestDate = entries[entries.length - 1].date
   return entries.filter((e) => daysBetween(e.date, latestDate) <= days)
+}
+
+// Average calories/day over the trailing `days` days ending today, counting only
+// days with at least one logged meal — an off day (no log) doesn't drag the
+// average down the way including it as zero would.
+export function getAverageExcludingZeroDays(dailyLogs, foods, days) {
+  const today = todayStr()
+  let sum = 0
+  let loggedDays = 0
+  for (let i = 0; i < days; i++) {
+    const date = addDays(today, -i)
+    const log = dailyLogs[date]
+    if (log && log.meals.length > 0) {
+      sum += computeDailyTotals(log.meals, foods).calories
+      loggedDays += 1
+    }
+  }
+  return loggedDays > 0 ? sum / loggedDays : 0
 }

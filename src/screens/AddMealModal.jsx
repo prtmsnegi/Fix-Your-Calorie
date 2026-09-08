@@ -5,6 +5,7 @@ import { useFoods } from '../context/FoodsContext'
 import { useDailyLogs } from '../context/DailyLogsContext'
 import { MEAL_TYPES, MEAL_TYPE_LABELS } from '../constants/mealTypes'
 import { computeMealNutrition } from '../utils/nutrition'
+import { getFrequencyStats } from '../utils/foodStats'
 import { AddEditFoodModal } from './AddEditFoodModal'
 
 // A minimal food-shaped object so quantity math keeps working when editing a
@@ -23,20 +24,31 @@ function foodFromMealSnapshot(meal) {
   }
 }
 
-function getRecentFoodIds(dailyLogs, limit = 5) {
+// Foods used most often float to the top; recency only breaks ties between
+// foods logged an equal number of times. Quick entries (no food_id) are skipped
+// since they aren't backed by a database food.
+function getFrequentFoodIds(dailyLogs, limit = 5) {
   const seen = new Set()
-  const ordered = []
+  const recencyOrder = []
   Object.keys(dailyLogs)
     .sort((a, b) => (a < b ? 1 : -1))
     .forEach((date) => {
       ;[...dailyLogs[date].meals].reverse().forEach((m) => {
-        if (!seen.has(m.food_id)) {
+        if (m.food_id && !seen.has(m.food_id)) {
           seen.add(m.food_id)
-          ordered.push(m.food_id)
+          recencyOrder.push(m.food_id)
         }
       })
     })
-  return ordered.slice(0, limit)
+  const counts = getFrequencyStats(dailyLogs)
+  const recencyRank = new Map(recencyOrder.map((id, i) => [id, i]))
+  return recencyOrder
+    .slice()
+    .sort((a, b) => {
+      const countDiff = (counts.get(b) || 0) - (counts.get(a) || 0)
+      return countDiff !== 0 ? countDiff : recencyRank.get(a) - recencyRank.get(b)
+    })
+    .slice(0, limit)
 }
 
 export function AddMealModal({ dateStr, defaultMealType = 'breakfast', editingMeal = null, onClose }) {
@@ -52,13 +64,20 @@ export function AddMealModal({ dateStr, defaultMealType = 'breakfast', editingMe
   const [quantity, setQuantity] = useState(editingMeal?.quantity ?? 1)
   const [showAddFood, setShowAddFood] = useState(false)
 
+  const [isQuickEntry, setIsQuickEntry] = useState(Boolean(editingMeal?.is_quick_entry))
+  const [quickName, setQuickName] = useState(editingMeal?.is_quick_entry ? editingMeal.food_name : '')
+  const [quickCalories, setQuickCalories] = useState(editingMeal?.is_quick_entry ? editingMeal.calories : '')
+  const [quickProtein, setQuickProtein] = useState(editingMeal?.is_quick_entry ? editingMeal.protein_g : '')
+  const [quickCarbs, setQuickCarbs] = useState(editingMeal?.is_quick_entry ? editingMeal.carbs_g : '')
+  const [quickFat, setQuickFat] = useState(editingMeal?.is_quick_entry ? editingMeal.fat_g : '')
+
   const handleNewFoodSaved = (data) => {
     const newFood = addFood(data)
     setSelectedFood(newFood)
     setShowAddFood(false)
   }
 
-  const recentFoodIds = useMemo(() => getRecentFoodIds(dailyLogs), [dailyLogs])
+  const recentFoodIds = useMemo(() => getFrequentFoodIds(dailyLogs), [dailyLogs])
 
   const recentFoods = useMemo(() => {
     return recentFoodIds.map((id) => foods.find((f) => f.id === id)).filter(Boolean)
@@ -78,8 +97,32 @@ export function AddMealModal({ dateStr, defaultMealType = 'breakfast', editingMe
 
   const nutrition = selectedFood ? computeMealNutrition(quantity, selectedFood.nutrition_per_unit) : null
 
+  const isQuickEntryValid = quickName.trim() && Number(quickCalories) > 0
+  const isFoodValid = selectedFood && quantity && Number(quantity) > 0
+  const canSubmit = isQuickEntry ? isQuickEntryValid : isFoodValid
+
   const handleAdd = () => {
-    if (!selectedFood || !quantity || Number(quantity) <= 0) return
+    if (isQuickEntry) {
+      if (!isQuickEntryValid) return
+      const payload = {
+        meal_type: mealType,
+        is_quick_entry: true,
+        food_name: quickName.trim(),
+        calories: Number(quickCalories) || 0,
+        protein_g: Number(quickProtein) || 0,
+        carbs_g: Number(quickCarbs) || 0,
+        fat_g: Number(quickFat) || 0,
+      }
+      if (editingMeal) {
+        updateMeal(dateStr, editingMeal.id, payload)
+      } else {
+        addMeal(dateStr, payload)
+      }
+      onClose()
+      return
+    }
+
+    if (!isFoodValid) return
     if (editingMeal) {
       const nutritionNow = computeMealNutrition(quantity, selectedFood.nutrition_per_unit)
       updateMeal(dateStr, editingMeal.id, {
@@ -109,6 +152,94 @@ export function AddMealModal({ dateStr, defaultMealType = 'breakfast', editingMe
           </select>
         </label>
 
+        {!editingMeal && (
+          <div className="flex gap-1 p-1 bg-gray-100 dark:bg-gray-800 rounded-lg">
+            <button
+              type="button"
+              onClick={() => setIsQuickEntry(false)}
+              className={`flex-1 py-1.5 rounded-md text-xs font-medium ${
+                !isQuickEntry
+                  ? 'bg-white dark:bg-gray-700 shadow text-gray-800 dark:text-gray-100'
+                  : 'text-gray-500 dark:text-gray-400'
+              }`}
+            >
+              Select Food
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsQuickEntry(true)}
+              className={`flex-1 py-1.5 rounded-md text-xs font-medium ${
+                isQuickEntry
+                  ? 'bg-white dark:bg-gray-700 shadow text-gray-800 dark:text-gray-100'
+                  : 'text-gray-500 dark:text-gray-400'
+              }`}
+            >
+              Quick Entry
+            </button>
+          </div>
+        )}
+
+        {isQuickEntry ? (
+          <div className="space-y-3">
+            <label className="block">
+              <span className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">What did you eat?</span>
+              <input
+                type="text"
+                value={quickName}
+                onChange={(e) => setQuickName(e.target.value)}
+                placeholder="e.g. Restaurant dinner"
+                className="input"
+              />
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <label className="block">
+                <span className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Calories</span>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  min="0"
+                  value={quickCalories}
+                  onChange={(e) => setQuickCalories(e.target.value)}
+                  className="input"
+                />
+              </label>
+              <label className="block">
+                <span className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Protein (g)</span>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  min="0"
+                  value={quickProtein}
+                  onChange={(e) => setQuickProtein(e.target.value)}
+                  className="input"
+                />
+              </label>
+              <label className="block">
+                <span className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Carbs (g)</span>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  min="0"
+                  value={quickCarbs}
+                  onChange={(e) => setQuickCarbs(e.target.value)}
+                  className="input"
+                />
+              </label>
+              <label className="block">
+                <span className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Fat (g)</span>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  min="0"
+                  value={quickFat}
+                  onChange={(e) => setQuickFat(e.target.value)}
+                  className="input"
+                />
+              </label>
+            </div>
+          </div>
+        ) : (
+          <>
         {!selectedFood && (
           <>
             <label className="block">
@@ -199,15 +330,17 @@ export function AddMealModal({ dateStr, defaultMealType = 'breakfast', editingMe
             )}
           </div>
         )}
+          </>
+        )}
 
         <div className="flex gap-2 pt-1">
           <button onClick={onClose} className="btn-secondary flex-1">Cancel</button>
           <button
             onClick={handleAdd}
-            disabled={!selectedFood || !quantity || Number(quantity) <= 0}
+            disabled={!canSubmit}
             className="btn-primary flex-1 disabled:opacity-40"
           >
-            {editingMeal ? 'Save Changes' : 'Add to Log'}
+            {editingMeal ? 'Save Changes' : isQuickEntry ? 'Log Quick Entry' : 'Add to Log'}
           </button>
         </div>
       </div>
