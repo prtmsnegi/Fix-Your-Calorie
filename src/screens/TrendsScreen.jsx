@@ -91,8 +91,8 @@ export function TrendsScreen() {
               <YAxis
                 yAxisId="weight"
                 domain={[
-                  (dataMin) => Math.floor(Math.min(dataMin - 1, profile.goal_weight ?? dataMin - 1)),
-                  (dataMax) => Math.ceil(Math.max(dataMax + 1, profile.goal_weight ?? dataMax + 1)),
+                  (dataMin) => Math.floor(Math.min(dataMin - 1, (profile.goal_weight ?? dataMin) - 1)),
+                  (dataMax) => Math.ceil(Math.max(dataMax + 1, (profile.goal_weight ?? dataMax) + 1)),
                 ]}
                 width={36}
                 tick={{ fontSize: 10 }}
@@ -102,8 +102,8 @@ export function TrendsScreen() {
                   yAxisId="bodyFat"
                   orientation="right"
                   domain={[
-                    (dataMin) => Math.floor(Math.min(dataMin - 2, profile.goal_body_fat_pct ?? dataMin - 2)),
-                    (dataMax) => Math.ceil(Math.max(dataMax + 2, profile.goal_body_fat_pct ?? dataMax + 2)),
+                    (dataMin) => Math.floor(Math.min(dataMin - 2, (profile.goal_body_fat_pct ?? dataMin) - 2)),
+                    (dataMax) => Math.ceil(Math.max(dataMax + 2, (profile.goal_body_fat_pct ?? dataMax) + 2)),
                   ]}
                   width={36}
                   tick={{ fontSize: 10 }}
@@ -119,7 +119,7 @@ export function TrendsScreen() {
                   y={profile.goal_weight}
                   stroke="#9ca3af"
                   strokeDasharray="3 3"
-                  label={{ value: 'Weight Goal', position: 'insideBottomRight', fontSize: 10, fill: '#9ca3af' }}
+                  label={{ value: 'Weight Goal', position: 'insideBottomLeft', fontSize: 10, fill: '#9ca3af' }}
                 />
               )}
               {hasBodyFatData && profile.goal_body_fat_pct != null && (
@@ -128,10 +128,23 @@ export function TrendsScreen() {
                   y={profile.goal_body_fat_pct}
                   stroke="#9ca3af"
                   strokeDasharray="3 3"
-                  label={{ value: 'Fat% Goal', position: 'insideTopRight', fontSize: 10, fill: '#9ca3af' }}
+                  label={{ value: 'Fat% Goal', position: 'insideBottomRight', fontSize: 10, fill: '#9ca3af' }}
                 />
               )}
-              <Line yAxisId="weight" type="monotone" dataKey="weight_kg" stroke="#10b981" dot={{ r: 3 }} name="Weight" />
+              <Line
+                yAxisId="weight"
+                type="monotone"
+                dataKey="weight_kg"
+                stroke="#10b981"
+                name="Weight"
+                dot={({ key, cx, cy, payload }) =>
+                  payload.weight_logged ? (
+                    <circle key={key} cx={cx} cy={cy} r={3} fill="#10b981" />
+                  ) : (
+                    <circle key={key} cx={cx} cy={cy} r={0} />
+                  )
+                }
+              />
               <Line yAxisId="weight" type="monotone" dataKey="moving_avg" stroke="#6366f1" dot={false} strokeDasharray="4 2" name="7-day avg" />
               {hasBodyFatData && (
                 <Line yAxisId="bodyFat" type="monotone" dataKey="body_fat_pct" stroke="#f97316" dot={false} name="Body Fat %" />

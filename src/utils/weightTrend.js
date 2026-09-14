@@ -30,7 +30,15 @@ export function getWeightAndBodyFatSeries(dailyLogs, profile, days) {
       hip_cm: lastHip,
       height_cm: profile.height_cm,
     })
-    series.push({ date, weight_kg: lastWeight, body_fat_pct })
+    // Flags distinguish a real log from a carried-forward value, so the chart
+    // can draw a dot only where the user actually logged something that day.
+    series.push({
+      date,
+      weight_kg: lastWeight,
+      weight_logged: log?.weight_kg != null,
+      body_fat_pct,
+      body_fat_logged: Boolean(m && (m.waist_cm != null || m.neck_cm != null || m.hips_cm != null) && body_fat_pct != null),
+    })
   }
   return series
 }
