@@ -30,18 +30,32 @@ export function DailyLogsProvider({ children }) {
       })
     }
 
-    const addMeal = (dateStr, { meal_type, food, quantity }) => {
-      const nutrition = computeMealNutrition(quantity, food.nutrition_per_unit)
-      const meal = {
-        id: crypto.randomUUID(),
-        meal_type,
-        food_id: food.id,
-        food_name: food.name,
-        unit: food.nutrition_per_unit.unit,
-        quantity: Number(quantity) || 0,
-        ...nutrition,
-        timestamp: formatTime(new Date()),
-      }
+    const addMeal = (dateStr, payload) => {
+      const meal = payload.is_quick_entry
+        ? {
+            id: crypto.randomUUID(),
+            meal_type: payload.meal_type,
+            food_id: null,
+            food_name: payload.food_name,
+            unit: 'entry',
+            quantity: 1,
+            calories: Number(payload.calories) || 0,
+            protein_g: Number(payload.protein_g) || 0,
+            carbs_g: Number(payload.carbs_g) || 0,
+            fat_g: Number(payload.fat_g) || 0,
+            is_quick_entry: true,
+            timestamp: formatTime(new Date()),
+          }
+        : {
+            id: crypto.randomUUID(),
+            meal_type: payload.meal_type,
+            food_id: payload.food.id,
+            food_name: payload.food.name,
+            unit: payload.food.nutrition_per_unit.unit,
+            quantity: Number(payload.quantity) || 0,
+            ...computeMealNutrition(payload.quantity, payload.food.nutrition_per_unit),
+            timestamp: formatTime(new Date()),
+          }
       updateDay(dateStr, (log) => ({ ...log, meals: [...log.meals, meal] }))
       return meal
     }

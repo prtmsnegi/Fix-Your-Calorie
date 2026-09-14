@@ -5,12 +5,13 @@ import { useDailyLogs } from '../context/DailyLogsContext'
 import { useFoods } from '../context/FoodsContext'
 import { useProfile } from '../context/ProfileContext'
 import { getLoggedWeightEntries, getTrendStatus } from '../utils/weightTrend'
-import { computeMovingAverage, filterToTrailingDays } from '../utils/movingAverage'
-import { computeDailyTotals, getDailyCalorieSeries } from '../utils/nutrition'
-import { formatShortDate, addDays, todayStr } from '../utils/dateUtils'
+import { computeMovingAverage, filterToTrailingDays, getAverageExcludingZeroDays } from '../utils/movingAverage'
+import { getDailyCalorieSeries } from '../utils/nutrition'
+import { formatShortDate } from '../utils/dateUtils'
 import { EmptyState } from '../components/EmptyState'
 
 const CALORIE_RANGE_OPTIONS = [7, 30, 90]
+const AVERAGE_WINDOW_OPTIONS = [7, 14, 21, 30]
 
 const STATUS_CONFIG = {
   on_track: { label: 'On Track', color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-950/30', Icon: TrendingUp },
@@ -24,6 +25,7 @@ export function TrendsScreen() {
   const { profile } = useProfile()
 
   const [calorieRangeDays, setCalorieRangeDays] = useState(30)
+  const [averageWindowDays, setAverageWindowDays] = useState(7)
 
   const chartData = useMemo(() => {
     const logged = getLoggedWeightEntries(dailyLogs)
@@ -46,16 +48,10 @@ export function TrendsScreen() {
     return getTrendStatus(chartData, profile.goal_weight, chartData[0].weight_kg)
   }, [chartData, profile.goal_weight])
 
-  const weeklyAvgCalories = useMemo(() => {
-    const today = todayStr()
-    let sum = 0
-    for (let i = 0; i < 7; i++) {
-      const date = addDays(today, -i)
-      const log = dailyLogs[date]
-      if (log) sum += computeDailyTotals(log.meals, foods).calories
-    }
-    return sum / 7
-  }, [dailyLogs, foods])
+  const avgCalories = useMemo(
+    () => getAverageExcludingZeroDays(dailyLogs, foods, averageWindowDays),
+    [dailyLogs, foods, averageWindowDays],
+  )
 
   const { label, color, bg, Icon } = STATUS_CONFIG[status]
 
@@ -132,10 +128,28 @@ export function TrendsScreen() {
       </div>
 
       <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700">
-        <p className="text-xs text-gray-500 dark:text-gray-400">Weekly Average Calories</p>
-        <p className="text-lg font-semibold text-gray-800 dark:text-gray-100 mt-0.5">
-          {Math.round(weeklyAvgCalories)} / day
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-xs text-gray-500 dark:text-gray-400">Average Calories</p>
+          <div className="flex gap-1">
+            {AVERAGE_WINDOW_OPTIONS.map((days) => (
+              <button
+                key={days}
+                onClick={() => setAverageWindowDays(days)}
+                className={`px-2 py-0.5 rounded-md text-[11px] font-medium ${
+                  averageWindowDays === days
+                    ? 'bg-emerald-500 text-white'
+                    : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'
+                }`}
+              >
+                {days}d
+              </button>
+            ))}
+          </div>
+        </div>
+        <p className="text-lg font-semibold text-gray-800 dark:text-gray-100">
+          {Math.round(avgCalories)} / day
         </p>
+        <p className="text-[11px] text-gray-400 mt-0.5">Based on logged days only, last {averageWindowDays} days</p>
       </div>
     </div>
   )

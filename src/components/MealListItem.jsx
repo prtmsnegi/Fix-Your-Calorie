@@ -10,7 +10,9 @@ export function MealListItem({ meal, onEdit, onDelete }) {
     <div className="flex items-center justify-between py-2.5 border-b border-gray-100 dark:border-gray-800 last:border-0">
       <div className="min-w-0">
         <p className="text-sm font-medium text-gray-800 dark:text-gray-100 truncate">
-          {d.food_name} <span className="text-gray-400 font-normal">x{meal.quantity} {d.unit}</span>
+          {d.food_name}{' '}
+          {!meal.is_quick_entry && <span className="text-gray-400 font-normal">x{meal.quantity} {d.unit}</span>}
+          {meal.is_quick_entry && <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400">quick entry</span>}
           {d.isStale && <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400">deleted food</span>}
         </p>
         <p className="text-xs text-gray-500 dark:text-gray-400">
