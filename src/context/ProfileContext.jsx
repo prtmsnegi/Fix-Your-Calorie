@@ -6,6 +6,7 @@ const DEFAULT_PROFILE = {
   age: null,
   gender: 'M',
   goal_weight: null,
+  goal_body_fat_pct: null,
   goal_calories: 2000,
   goal_protein_pct: 30,
   goal_carbs_pct: 40,

@@ -34,6 +34,7 @@ export function TrendsScreen() {
   }, [dailyLogs, profile, weightRangeDays])
 
   const hasWeightData = useMemo(() => chartData.some((d) => d.weight_kg != null), [chartData])
+  const hasBodyFatData = useMemo(() => chartData.some((d) => d.body_fat_pct != null), [chartData])
 
   const calorieChartData = useMemo(() => {
     const series = getDailyCalorieSeries(dailyLogs, foods, calorieRangeDays)
@@ -87,15 +88,54 @@ export function TrendsScreen() {
             <LineChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--color-gray-200, #e5e7eb)" />
               <XAxis dataKey="date" tickFormatter={formatShortDate} tick={{ fontSize: 10 }} />
-              <YAxis yAxisId="weight" domain={['dataMin - 1', 'dataMax + 1']} width={36} tick={{ fontSize: 10 }} />
-              <YAxis yAxisId="bodyFat" orientation="right" domain={['dataMin - 2', 'dataMax + 2']} width={36} tick={{ fontSize: 10 }} />
+              <YAxis
+                yAxisId="weight"
+                domain={[
+                  (dataMin) => Math.floor(Math.min(dataMin - 1, profile.goal_weight ?? dataMin - 1)),
+                  (dataMax) => Math.ceil(Math.max(dataMax + 1, profile.goal_weight ?? dataMax + 1)),
+                ]}
+                width={36}
+                tick={{ fontSize: 10 }}
+              />
+              {hasBodyFatData && (
+                <YAxis
+                  yAxisId="bodyFat"
+                  orientation="right"
+                  domain={[
+                    (dataMin) => Math.floor(Math.min(dataMin - 2, profile.goal_body_fat_pct ?? dataMin - 2)),
+                    (dataMax) => Math.ceil(Math.max(dataMax + 2, profile.goal_body_fat_pct ?? dataMax + 2)),
+                  ]}
+                  width={36}
+                  tick={{ fontSize: 10 }}
+                />
+              )}
               <Tooltip
                 labelFormatter={formatShortDate}
                 formatter={(v, name) => (name === 'Body Fat %' ? `${v?.toFixed(1)}%` : `${v} kg`)}
               />
+              {profile.goal_weight != null && (
+                <ReferenceLine
+                  yAxisId="weight"
+                  y={profile.goal_weight}
+                  stroke="#9ca3af"
+                  strokeDasharray="3 3"
+                  label={{ value: 'Weight Goal', position: 'insideBottomRight', fontSize: 10, fill: '#9ca3af' }}
+                />
+              )}
+              {hasBodyFatData && profile.goal_body_fat_pct != null && (
+                <ReferenceLine
+                  yAxisId="bodyFat"
+                  y={profile.goal_body_fat_pct}
+                  stroke="#9ca3af"
+                  strokeDasharray="3 3"
+                  label={{ value: 'Fat% Goal', position: 'insideTopRight', fontSize: 10, fill: '#9ca3af' }}
+                />
+              )}
               <Line yAxisId="weight" type="monotone" dataKey="weight_kg" stroke="#10b981" dot={{ r: 3 }} name="Weight" />
               <Line yAxisId="weight" type="monotone" dataKey="moving_avg" stroke="#6366f1" dot={false} strokeDasharray="4 2" name="7-day avg" />
-              <Line yAxisId="bodyFat" type="monotone" dataKey="body_fat_pct" stroke="#f97316" dot={false} name="Body Fat %" />
+              {hasBodyFatData && (
+                <Line yAxisId="bodyFat" type="monotone" dataKey="body_fat_pct" stroke="#f97316" dot={false} name="Body Fat %" />
+              )}
             </LineChart>
           </ResponsiveContainer>
         )}

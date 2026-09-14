@@ -25,6 +25,7 @@ export function SettingsScreen() {
     age: profile.age ?? '',
     gender: profile.gender ?? 'M',
     goal_weight: profile.goal_weight ?? '',
+    goal_body_fat_pct: profile.goal_body_fat_pct ?? '',
     goal_calories: profile.goal_calories ?? '',
     goal_protein_pct: profile.goal_protein_pct ?? 30,
     goal_carbs_pct: profile.goal_carbs_pct ?? 40,
@@ -60,6 +61,7 @@ export function SettingsScreen() {
       age: Number(form.age) || null,
       gender: form.gender,
       goal_weight: Number(form.goal_weight) || null,
+      goal_body_fat_pct: Number(form.goal_body_fat_pct) || null,
       goal_calories: Number(form.goal_calories) || 2000,
       goal_protein_pct: Number(form.goal_protein_pct),
       goal_carbs_pct: Number(form.goal_carbs_pct),
@@ -140,6 +142,9 @@ export function SettingsScreen() {
               <input type="number" inputMode="decimal" value={form.goal_weight} onChange={set('goal_weight')} className="input" />
             </Field>
           </div>
+          <Field label="Goal Body Fat % (optional)">
+            <input type="number" inputMode="decimal" value={form.goal_body_fat_pct} onChange={set('goal_body_fat_pct')} placeholder="e.g. 15" className="input" />
+          </Field>
           <Field label="Activity Level">
             <select value={form.activity_level} onChange={set('activity_level')} className="input">
               {ACTIVITY_LEVELS.map((a) => (
