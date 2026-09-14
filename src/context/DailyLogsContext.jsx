@@ -11,6 +11,7 @@ const DailyLogsContext = createContext(null)
 function emptyLog() {
   return {
     weight_kg: null,
+    measurements: { waist_cm: null, chest_cm: null, arms_cm: null, hips_cm: null },
     meals: [],
     daily_totals: { calories: 0, protein_g: 0, carbs_g: 0, fat_g: 0 },
   }
@@ -20,7 +21,9 @@ export function DailyLogsProvider({ children }) {
   const [dailyLogs, setDailyLogs] = useLocalStorage('calorie-tracker:dailyLogs', {})
 
   const value = useMemo(() => {
-    const getLogForDate = (dateStr) => dailyLogs[dateStr] || emptyLog()
+    // Merges over emptyLog() so logs saved before a schema field existed (e.g.
+    // measurements) still come back with a sensible default for it.
+    const getLogForDate = (dateStr) => ({ ...emptyLog(), ...dailyLogs[dateStr] })
 
     const updateDay = (dateStr, updater) => {
       setDailyLogs((prev) => {
@@ -78,6 +81,16 @@ export function DailyLogsProvider({ children }) {
       updateDay(dateStr, (log) => ({ ...log, weight_kg: weightKg }))
     }
 
+    // partial holds only the fields the user actually entered, merged over
+    // whatever was already logged for that day (and over the schema default,
+    // in case the day predates the measurements field).
+    const setMeasurements = (dateStr, partial) => {
+      updateDay(dateStr, (log) => ({
+        ...log,
+        measurements: { ...emptyLog().measurements, ...log.measurements, ...partial },
+      }))
+    }
+
     const clearDay = (dateStr) => {
       updateDay(dateStr, (log) => ({ ...log, meals: [] }))
     }
@@ -90,7 +103,7 @@ export function DailyLogsProvider({ children }) {
 
     const replaceDailyLogs = (newLogs) => setDailyLogs(newLogs)
 
-    return { dailyLogs, getLogForDate, addMeal, updateMeal, deleteMeal, setWeight, clearDay, isDateWithin7Days, replaceDailyLogs }
+    return { dailyLogs, getLogForDate, addMeal, updateMeal, deleteMeal, setWeight, setMeasurements, clearDay, isDateWithin7Days, replaceDailyLogs }
   }, [dailyLogs, setDailyLogs])
 
   return <DailyLogsContext.Provider value={value}>{children}</DailyLogsContext.Provider>

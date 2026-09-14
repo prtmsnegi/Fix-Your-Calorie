@@ -10,7 +10,7 @@ import { getDailyCalorieSeries } from '../utils/nutrition'
 import { formatShortDate } from '../utils/dateUtils'
 import { EmptyState } from '../components/EmptyState'
 
-const CALORIE_RANGE_OPTIONS = [7, 30, 90]
+const RANGE_OPTIONS = [7, 30, 90]
 const AVERAGE_WINDOW_OPTIONS = [7, 14, 21, 30]
 
 const STATUS_CONFIG = {
@@ -24,14 +24,15 @@ export function TrendsScreen() {
   const { foods } = useFoods()
   const { profile } = useProfile()
 
+  const [weightRangeDays, setWeightRangeDays] = useState(30)
   const [calorieRangeDays, setCalorieRangeDays] = useState(30)
   const [averageWindowDays, setAverageWindowDays] = useState(7)
 
   const chartData = useMemo(() => {
     const logged = getLoggedWeightEntries(dailyLogs)
-    const trailing = filterToTrailingDays(logged, 28)
+    const trailing = filterToTrailingDays(logged, weightRangeDays)
     return computeMovingAverage(trailing)
-  }, [dailyLogs])
+  }, [dailyLogs, weightRangeDays])
 
   const calorieChartData = useMemo(() => {
     const series = getDailyCalorieSeries(dailyLogs, foods, calorieRangeDays)
@@ -57,7 +58,24 @@ export function TrendsScreen() {
 
   return (
     <div className="px-4 pt-4 pb-24">
-      <h1 className="text-xl font-bold text-gray-900 dark:text-gray-50 mb-3">4-Week Weight Trend</h1>
+      <div className="flex items-center justify-between mb-3">
+        <h1 className="text-xl font-bold text-gray-900 dark:text-gray-50">Weight Trend</h1>
+        <div className="flex gap-1">
+          {RANGE_OPTIONS.map((days) => (
+            <button
+              key={days}
+              onClick={() => setWeightRangeDays(days)}
+              className={`px-2.5 py-1 rounded-lg text-xs font-medium ${
+                weightRangeDays === days
+                  ? 'bg-emerald-500 text-white'
+                  : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'
+              }`}
+            >
+              {days}d
+            </button>
+          ))}
+        </div>
+      </div>
 
       <div className="bg-white dark:bg-gray-800 rounded-xl p-3 border border-gray-100 dark:border-gray-700 mb-4">
         {chartData.length === 0 ? (
@@ -84,7 +102,7 @@ export function TrendsScreen() {
       <div className="flex items-center justify-between mb-3">
         <h1 className="text-xl font-bold text-gray-900 dark:text-gray-50">Calorie Trend</h1>
         <div className="flex gap-1">
-          {CALORIE_RANGE_OPTIONS.map((days) => (
+          {RANGE_OPTIONS.map((days) => (
             <button
               key={days}
               onClick={() => setCalorieRangeDays(days)}
@@ -149,7 +167,7 @@ export function TrendsScreen() {
         <p className="text-lg font-semibold text-gray-800 dark:text-gray-100">
           {Math.round(avgCalories)} / day
         </p>
-        <p className="text-[11px] text-gray-400 mt-0.5">Based on logged days only, last {averageWindowDays} days</p>
+        <p className="text-[11px] text-gray-400 mt-0.5">Based on completed days only, last {averageWindowDays} days (today excluded until it's done)</p>
       </div>
     </div>
   )

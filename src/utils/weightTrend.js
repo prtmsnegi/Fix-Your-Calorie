@@ -11,11 +11,13 @@ export function getRecentWeightEntries(dailyLogs, count = 3) {
   return entries.slice(-count).reverse() // most recent first
 }
 
-// direction: 'up' | 'down' | 'flat' comparing entry to the previous logged entry
-export function getTrendDirection(entries, index) {
+// direction: 'up' | 'down' | 'flat' comparing entry to the previous logged entry.
+// field defaults to weight_kg but any *_entries array shaped {date, [field]: n}
+// (e.g. from measurementTrend.js) works too.
+export function getTrendDirection(entries, index, field = 'weight_kg') {
   if (index >= entries.length - 1) return 'flat'
-  const current = entries[index].weight_kg
-  const previous = entries[index + 1].weight_kg
+  const current = entries[index][field]
+  const previous = entries[index + 1][field]
   const delta = current - previous
   if (Math.abs(delta) < 0.05) return 'flat'
   return delta > 0 ? 'up' : 'down'

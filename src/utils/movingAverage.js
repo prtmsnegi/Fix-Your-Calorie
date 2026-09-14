@@ -27,14 +27,16 @@ export function filterToTrailingDays(entries, days = 28) {
   return entries.filter((e) => daysBetween(e.date, latestDate) <= days)
 }
 
-// Average calories/day over the trailing `days` days ending today, counting only
-// days with at least one logged meal — an off day (no log) doesn't drag the
-// average down the way including it as zero would.
+// Average calories/day over the trailing `days` *completed* days (yesterday back
+// N days) — today is always excluded since it's still being logged and would
+// otherwise drag the average down with a partial total. Of those completed days,
+// only ones with at least one logged meal count — an unlogged day doesn't drag
+// the average down the way including it as zero would.
 export function getAverageExcludingZeroDays(dailyLogs, foods, days) {
   const today = todayStr()
   let sum = 0
   let loggedDays = 0
-  for (let i = 0; i < days; i++) {
+  for (let i = 1; i <= days; i++) {
     const date = addDays(today, -i)
     const log = dailyLogs[date]
     if (log && log.meals.length > 0) {
