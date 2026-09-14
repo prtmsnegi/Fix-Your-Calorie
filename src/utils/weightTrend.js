@@ -1,3 +1,40 @@
+import { todayStr, addDays } from './dateUtils'
+import { calculateNavyBodyFat } from './bodyFat'
+
+// Dense day-by-day series (one entry per calendar day over the trailing `days`
+// days ending today) merging weight and Navy body-fat % so both render on one
+// chart. Each value carries forward from the last logged input until a newer
+// one arrives — weight from weight_kg, body fat from whichever of
+// waist/neck/hip measurements were last logged (independently of each other,
+// since they need not be logged together). Days before the very first
+// relevant log are left null (nothing to carry forward yet).
+export function getWeightAndBodyFatSeries(dailyLogs, profile, days) {
+  const today = todayStr()
+  const series = []
+  let lastWeight = null
+  let lastWaist = null
+  let lastNeck = null
+  let lastHip = null
+  for (let i = days - 1; i >= 0; i--) {
+    const date = addDays(today, -i)
+    const log = dailyLogs[date]
+    if (log?.weight_kg != null) lastWeight = log.weight_kg
+    const m = log?.measurements
+    if (m?.waist_cm != null) lastWaist = m.waist_cm
+    if (m?.neck_cm != null) lastNeck = m.neck_cm
+    if (m?.hips_cm != null) lastHip = m.hips_cm
+    const body_fat_pct = calculateNavyBodyFat({
+      gender: profile.gender,
+      waist_cm: lastWaist,
+      neck_cm: lastNeck,
+      hip_cm: lastHip,
+      height_cm: profile.height_cm,
+    })
+    series.push({ date, weight_kg: lastWeight, body_fat_pct })
+  }
+  return series
+}
+
 // Returns [{date, weight_kg}] sorted ascending by date, logged days only.
 export function getLoggedWeightEntries(dailyLogs) {
   return Object.entries(dailyLogs)

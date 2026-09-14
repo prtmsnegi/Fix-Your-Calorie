@@ -5,6 +5,7 @@ import { useProfile } from '../context/ProfileContext'
 import { getRecentWeightEntries, getTrendDirection } from '../utils/weightTrend'
 import { getRecentMeasurementEntries } from '../utils/measurementTrend'
 import { calculateBMI, getBMICategory, BMI_CATEGORY_COLORS } from '../utils/bmi'
+import { calculateNavyBodyFat } from '../utils/bodyFat'
 import { todayStr, isMonWedFri, get7DaysAgoStr } from '../utils/dateUtils'
 import { MEASUREMENT_FIELDS } from '../constants/measurements'
 import { WeightEntryRow } from '../components/WeightEntryRow'
@@ -46,6 +47,21 @@ export function WeightScreen() {
 
   const bmi = calculateBMI(latestWeight, profile.height_cm)
   const bmiCategory = getBMICategory(bmi)
+
+  const latestWaist = measurementRows.find((r) => r.key === 'waist_cm')?.value ?? null
+  const latestNeck = measurementRows.find((r) => r.key === 'neck_cm')?.value ?? null
+  const latestHip = measurementRows.find((r) => r.key === 'hips_cm')?.value ?? null
+  const bodyFatPct = calculateNavyBodyFat({
+    gender: profile.gender,
+    waist_cm: latestWaist,
+    neck_cm: latestNeck,
+    hip_cm: latestHip,
+    height_cm: profile.height_cm,
+  })
+  const bodyFatMissing =
+    profile.gender === 'F'
+      ? 'Log waist, neck, hips & set height'
+      : 'Log waist, neck & set height'
 
   const showScheduleHint = isMonWedFri() && dailyLogs[todayStr()]?.weight_kg == null
 
@@ -147,6 +163,22 @@ export function WeightScreen() {
           label="Goal Weight"
           value={profile.goal_weight ? `${profile.goal_weight} kg` : '—'}
           sublabel={latestWeight ? `Current: ${latestWeight} kg` : undefined}
+        />
+      </div>
+
+      <div className="mb-4">
+        <StatCard
+          label={
+            <InfoLabel label="Body Fat % (Navy method)">
+              Men: 495 ÷ (1.0324 − 0.19077·log₁₀(waist − neck) + 0.15456·log₁₀(height)) − 450.
+              Women: 495 ÷ (1.29579 − 0.35004·log₁₀(waist + hip − neck) + 0.22100·log₁₀(height)) − 450.
+              {bodyFatPct != null
+                ? ` For you: ${bodyFatPct.toFixed(1)}% using your latest waist${profile.gender === 'F' ? ', hip,' : ''} & neck measurements.`
+                : ' Log waist & neck (and hip, if applicable) plus your height in Settings to see this calculated.'}
+            </InfoLabel>
+          }
+          value={bodyFatPct != null ? `${bodyFatPct.toFixed(1)}%` : '—'}
+          sublabel={bodyFatPct != null ? 'Estimated body fat' : bodyFatMissing}
         />
       </div>
 

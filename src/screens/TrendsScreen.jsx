@@ -4,8 +4,8 @@ import { TrendingUp, AlertTriangle, HelpCircle } from 'lucide-react'
 import { useDailyLogs } from '../context/DailyLogsContext'
 import { useFoods } from '../context/FoodsContext'
 import { useProfile } from '../context/ProfileContext'
-import { getLoggedWeightEntries, getTrendStatus } from '../utils/weightTrend'
-import { computeMovingAverage, filterToTrailingDays, getAverageExcludingZeroDays } from '../utils/movingAverage'
+import { getWeightAndBodyFatSeries, getTrendStatus } from '../utils/weightTrend'
+import { computeMovingAverage, getAverageExcludingZeroDays } from '../utils/movingAverage'
 import { getDailyCalorieSeries } from '../utils/nutrition'
 import { formatShortDate } from '../utils/dateUtils'
 import { EmptyState } from '../components/EmptyState'
@@ -29,10 +29,11 @@ export function TrendsScreen() {
   const [averageWindowDays, setAverageWindowDays] = useState(7)
 
   const chartData = useMemo(() => {
-    const logged = getLoggedWeightEntries(dailyLogs)
-    const trailing = filterToTrailingDays(logged, weightRangeDays)
-    return computeMovingAverage(trailing)
-  }, [dailyLogs, weightRangeDays])
+    const series = getWeightAndBodyFatSeries(dailyLogs, profile, weightRangeDays)
+    return computeMovingAverage(series, 7, 'weight_kg')
+  }, [dailyLogs, profile, weightRangeDays])
+
+  const hasWeightData = useMemo(() => chartData.some((d) => d.weight_kg != null), [chartData])
 
   const calorieChartData = useMemo(() => {
     const series = getDailyCalorieSeries(dailyLogs, foods, calorieRangeDays)
@@ -45,8 +46,9 @@ export function TrendsScreen() {
   )
 
   const status = useMemo(() => {
-    if (chartData.length === 0) return 'insufficient_data'
-    return getTrendStatus(chartData, profile.goal_weight, chartData[0].weight_kg)
+    const withWeight = chartData.filter((d) => d.weight_kg != null)
+    if (withWeight.length === 0) return 'insufficient_data'
+    return getTrendStatus(withWeight, profile.goal_weight, withWeight[0].weight_kg)
   }, [chartData, profile.goal_weight])
 
   const avgCalories = useMemo(
@@ -59,7 +61,7 @@ export function TrendsScreen() {
   return (
     <div className="px-4 pt-4 pb-24">
       <div className="flex items-center justify-between mb-3">
-        <h1 className="text-xl font-bold text-gray-900 dark:text-gray-50">Weight Trend</h1>
+        <h1 className="text-xl font-bold text-gray-900 dark:text-gray-50">Weight & Body Fat Trend</h1>
         <div className="flex gap-1">
           {RANGE_OPTIONS.map((days) => (
             <button
@@ -78,17 +80,22 @@ export function TrendsScreen() {
       </div>
 
       <div className="bg-white dark:bg-gray-800 rounded-xl p-3 border border-gray-100 dark:border-gray-700 mb-4">
-        {chartData.length === 0 ? (
+        {!hasWeightData ? (
           <EmptyState icon={TrendingUp} title="No weight data yet" subtitle="Log weight entries to see your trend" />
         ) : (
           <ResponsiveContainer width="100%" height={240}>
             <LineChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--color-gray-200, #e5e7eb)" />
               <XAxis dataKey="date" tickFormatter={formatShortDate} tick={{ fontSize: 10 }} />
-              <YAxis domain={['dataMin - 1', 'dataMax + 1']} width={36} tick={{ fontSize: 10 }} />
-              <Tooltip labelFormatter={formatShortDate} formatter={(v) => `${v} kg`} />
-              <Line type="monotone" dataKey="weight_kg" stroke="#10b981" dot={{ r: 3 }} name="Weight" />
-              <Line type="monotone" dataKey="moving_avg" stroke="#6366f1" dot={false} strokeDasharray="4 2" name="7-day avg" />
+              <YAxis yAxisId="weight" domain={['dataMin - 1', 'dataMax + 1']} width={36} tick={{ fontSize: 10 }} />
+              <YAxis yAxisId="bodyFat" orientation="right" domain={['dataMin - 2', 'dataMax + 2']} width={36} tick={{ fontSize: 10 }} />
+              <Tooltip
+                labelFormatter={formatShortDate}
+                formatter={(v, name) => (name === 'Body Fat %' ? `${v?.toFixed(1)}%` : `${v} kg`)}
+              />
+              <Line yAxisId="weight" type="monotone" dataKey="weight_kg" stroke="#10b981" dot={{ r: 3 }} name="Weight" />
+              <Line yAxisId="weight" type="monotone" dataKey="moving_avg" stroke="#6366f1" dot={false} strokeDasharray="4 2" name="7-day avg" />
+              <Line yAxisId="bodyFat" type="monotone" dataKey="body_fat_pct" stroke="#f97316" dot={false} name="Body Fat %" />
             </LineChart>
           </ResponsiveContainer>
         )}

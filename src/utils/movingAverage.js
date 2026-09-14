@@ -9,11 +9,15 @@ export function computeMovingAverage(entries, windowDays = 7, field = 'weight_kg
     const windowEntries = []
     for (let j = i; j >= 0; j--) {
       if (daysBetween(entries[j].date, entry.date) < windowDays) {
-        windowEntries.push(entries[j])
+        // Skip null values instead of letting `sum + null` coerce to +0 — matters
+        // for dense forward-filled series that have genuine nulls before the
+        // first-ever log (sparse/zero-filled series never had this issue).
+        if (entries[j][field] != null) windowEntries.push(entries[j])
       } else {
         break
       }
     }
+    if (windowEntries.length === 0) return { ...entry, moving_avg: null }
     const avg = windowEntries.reduce((sum, e) => sum + e[field], 0) / windowEntries.length
     return { ...entry, moving_avg: Number(avg.toFixed(2)) }
   })

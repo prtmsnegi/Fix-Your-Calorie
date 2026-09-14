@@ -2,8 +2,15 @@ import { createContext, useContext, useMemo } from 'react'
 import { useLocalStorage } from '../hooks/useLocalStorage'
 import { computeMealNutrition } from '../utils/nutrition'
 import { formatTime, todayStr, daysBetween } from '../utils/dateUtils'
+import { MEASUREMENT_FIELDS } from '../constants/measurements'
 
 const DailyLogsContext = createContext(null)
+
+// Derived from MEASUREMENT_FIELDS so adding a new measurement field there
+// (e.g. neck for the Navy body-fat formula) doesn't require updating this too.
+function emptyMeasurements() {
+  return Object.fromEntries(MEASUREMENT_FIELDS.map((f) => [f.key, null]))
+}
 
 // daily_totals is kept in the schema for compatibility but is never read as the
 // source of truth — totals are always recomputed live via computeDailyTotals()
@@ -11,7 +18,7 @@ const DailyLogsContext = createContext(null)
 function emptyLog() {
   return {
     weight_kg: null,
-    measurements: { waist_cm: null, chest_cm: null, arms_cm: null, hips_cm: null },
+    measurements: emptyMeasurements(),
     meals: [],
     daily_totals: { calories: 0, protein_g: 0, carbs_g: 0, fat_g: 0 },
   }
